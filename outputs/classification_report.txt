@@ -1,0 +1,10 @@
+               precision    recall  f1-score   support
+
+buildings_any       0.96      0.83      0.89       760
+ flooding_any       0.42      0.33      0.37        82
+   debris_any       0.43      0.33      0.38        30
+
+    micro avg       0.90      0.76      0.82       872
+    macro avg       0.60      0.50      0.55       872
+ weighted avg       0.89      0.76      0.82       872
+  samples avg       0.60      0.59      0.59       872

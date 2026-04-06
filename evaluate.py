@@ -43,6 +43,9 @@ def evaluate():
     print("\nClassification Report:\n")
     print(report)
 
+    with open("outputs/classification_report.txt", "w") as f:
+        f.write(report)
+
 
 if __name__ == "__main__":
     evaluate()
