@@ -7,9 +7,7 @@ import numpy as np
 from config import *
 from dataset import load_data, LADIDataset, get_transforms
 from model import build_model
-from utils import get_predictions, compute_metrics
-
-DEVICE = DEVICE
+from utils import get_predictions, compute_metrics, save_training_curve
 
 
 def train():
@@ -29,13 +27,14 @@ def train():
     optimizer = torch.optim.Adam(model.parameters(), lr=LR)
 
     best_loss = float("inf")
+    train_losses = []
+    val_losses = []
 
     for epoch in range(EPOCHS):
-        print(f"\nEpoch {epoch+1}/{EPOCHS}")
+        print(f"\nEpoch {epoch + 1}/{EPOCHS}")
 
-        # TRAIN
         model.train()
-        total_loss = 0
+        total_train_loss = 0.0
 
         for x, y in tqdm(train_loader):
             x, y = x.to(DEVICE), y.to(DEVICE)
@@ -43,17 +42,16 @@ def train():
             optimizer.zero_grad()
             out = model(x)
             loss = criterion(out, y)
-
             loss.backward()
             optimizer.step()
 
-            total_loss += loss.item()
+            total_train_loss += loss.item()
 
-        print("Train Loss:", total_loss / len(train_loader))
+        avg_train_loss = total_train_loss / len(train_loader)
+        train_losses.append(avg_train_loss)
 
-        # VALIDATION
         model.eval()
-        val_loss = 0
+        total_val_loss = 0.0
         all_true, all_pred = [], []
 
         with torch.no_grad():
@@ -62,28 +60,33 @@ def train():
 
                 out = model(x)
                 loss = criterion(out, y)
-                val_loss += loss.item()
+                total_val_loss += loss.item()
 
                 probs, preds = get_predictions(out.cpu().numpy(), THRESHOLD)
-
                 all_true.append(y.cpu().numpy())
                 all_pred.append(preds)
+
+        avg_val_loss = total_val_loss / len(val_loader)
+        val_losses.append(avg_val_loss)
 
         y_true = np.vstack(all_true)
         y_pred = np.vstack(all_pred)
 
         macro_f1, micro_f1, _ = compute_metrics(y_true, y_pred, TARGET_LABELS)
 
-        print("Val Loss:", val_loss / len(val_loader))
-        print("Macro F1:", macro_f1)
-        print("Micro F1:", micro_f1)
+        print(f"Train Loss: {avg_train_loss:.4f}")
+        print(f"Val Loss:   {avg_val_loss:.4f}")
+        print(f"Macro F1:   {macro_f1:.4f}")
+        print(f"Micro F1:   {micro_f1:.4f}")
 
-        if val_loss < best_loss:
-            best_loss = val_loss
+        if avg_val_loss < best_loss:
+            best_loss = avg_val_loss
             torch.save(model.state_dict(), BEST_MODEL_PATH)
-            print("Saved best model")
+            print(f"Saved best model to {BEST_MODEL_PATH}")
 
-    print("\nTraining done!")
+    save_training_curve(train_losses, val_losses, TRAINING_CURVE_PATH)
+    print(f"Saved training curve to {TRAINING_CURVE_PATH}")
+    print("Training done.")
 
 
 if __name__ == "__main__":
